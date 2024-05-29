@@ -770,9 +770,9 @@ void luaK_setreturns (FuncState *fs, expdesc *e, int nresults) {
         f->lineinfo[j] = f->lineinfo[j-1];
       }
       f->code[i-2] = CREATE_ABCk(OP_LOADNIL, iA + 1, nresults - 2, 0, 0);
+      e->u.info++;
+      fs->pc++;
     }
-    e->u.info++;
-    fs->pc++;
   }
   else {
     lua_assert(e->k == VVARARG);
