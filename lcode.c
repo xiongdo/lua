@@ -175,6 +175,41 @@ static void fixjump (FuncState *fs, int pc, int dest) {
 }
 
 
+void luaK_fixjump(FuncState* fs, int pc, expdesc* e) {
+  int offset = 0;
+  int regoffset = 0;
+  switch (e->k) {
+    case VCALL: {
+      offset = 0;
+      regoffset = 1;
+      break;
+    }
+    case VINDEXED: {
+      offset = 1;
+      int n = luaY_nvarstack(fs);
+      if (e->u.ind.t >= n) regoffset++;
+      if (e->u.ind.idx >= n) regoffset++;
+      break;
+    }
+    case VINDEXI: case VINDEXSTR: {
+      offset = 1;
+      if (e->u.ind.t >= luaY_nvarstack(fs)) regoffset++;
+      break;
+    }
+    case VINDEXUP: {
+      offset = 1;
+      regoffset = 0;
+      break;
+    }
+    default: break;
+  }
+  int target = fs->pc;
+  fixjump(fs, pc, target + offset);
+  Instruction* ins = &fs->f->code[pc-1];
+  SETARG_A(*ins, fs->freereg - regoffset);
+}
+
+
 /*
 ** Concatenate jump-list 'l2' into jump-list 'l1'
 */
@@ -1096,6 +1131,23 @@ void luaK_self (FuncState *fs, expdesc *e, expdesc *key) {
 
 
 /*
+** Emit SELF instruction (convert expression 'e' into 'e:key(e,').
+*/
+int luaK_selfsafe (FuncState *fs, expdesc *e, expdesc *key) {
+  int ereg;
+  int pc = luaK_goifnotnil(fs, e);
+  ereg = e->u.info;  /* register where 'e' was placed */
+  freeexp(fs, e);
+  e->u.info = fs->freereg;  /* base register for op_self */
+  e->k = VNONRELOC;  /* self expression has a fixed register */
+  luaK_reserveregs(fs, 2);  /* function and 'self' produced by op_self */
+  codeABRK(fs, OP_SELF, e->u.info, ereg, key);
+  freeexp(fs, key);
+  return pc;
+}
+
+
+/*
 ** Negate condition 'e' (where 'e' is a comparison).
 */
 static void negatecondition (FuncState *fs, expdesc *e) {
@@ -1128,6 +1180,27 @@ static int jumponcond (FuncState *fs, expdesc *e, int cond) {
 
 
 /*
+** Emit instruction to jump if 'e' is 'cond' (that is, if 'cond'
+** is true, code will jump if 'e' is true.) Return jump position.
+** Optimize when 'e' is 'not' something, inverting the condition
+** and removing the 'not'.
+*/
+static int jumponcondnotfree(FuncState* fs, expdesc* e, int cond) {
+  if (e->k == VRELOC) {
+    Instruction ie = getinstruction(fs, e);
+    if (GET_OPCODE(ie) == OP_NOT) {
+      removelastinstruction(fs);  /* remove previous OP_NOT */
+      return condjump(fs, OP_TEST, GETARG_B(ie), 0, 0, !cond);
+    }
+    /* else go through */
+  }
+  discharge2anyreg(fs, e);
+  //freeexp(fs, e);
+  return condjump(fs, OP_TESTSET, NO_REG, e->u.info, 0, cond);
+}
+
+
+/*
 ** Emit code to go through if 'e' is true, jump otherwise.
 */
 void luaK_goiftrue (FuncState *fs, expdesc *e) {
@@ -1151,6 +1224,34 @@ void luaK_goiftrue (FuncState *fs, expdesc *e) {
   luaK_concat(fs, &e->f, pc);  /* insert new jump in false list */
   luaK_patchtohere(fs, e->t);  /* true list jumps to here (to go through) */
   e->t = NO_JUMP;
+}
+
+
+/*
+** Emit code to go through if 'e' is true, jump otherwise.
+*/
+int luaK_goifnotnil(FuncState* fs, expdesc* e) {
+  int pc = -1;  /* pc of new jump */
+  luaK_dischargevars(fs, e);
+  switch (e->k) {
+    case VJMP: {  /* condition? */
+      negatecondition(fs, e);  /* jump when it is false */
+      pc = e->u.info;  /* save jump position */
+      break;
+    }
+    case VK: case VKFLT: case VKINT: case VKSTR: case VTRUE: {
+      pc = NO_JUMP;  /* always true; do nothing */
+      break;
+    }
+    default: {
+      pc = jumponcondnotfree(fs, e, 0);  /* jump when false */
+      break;
+    }
+  }
+  luaK_concat(fs, &e->f, pc);  /* insert new jump in false list */
+  luaK_patchtohere(fs, e->t);  /* true list jumps to here (to go through) */
+  e->f = e->t = NO_JUMP;
+  return pc;
 }
 
 

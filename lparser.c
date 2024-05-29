@@ -828,6 +828,18 @@ static void fieldsel (LexState *ls, expdesc *v) {
 }
 
 
+static int fieldselsafe(LexState* ls, expdesc* v) {
+  /* fieldsel -> ['?.'] NAME */
+  FuncState* fs = ls->fs;
+  expdesc key;
+  int pc = luaK_goifnotnil(fs, v);
+  luaX_next(ls);  /* skip the dot or colon */
+  codename(ls, &key);
+  luaK_indexed(fs, v, &key);
+  return pc;
+}
+
+
 static void yindex (LexState *ls, expdesc *v) {
   /* index -> '[' expr ']' */
   luaX_next(ls);  /* skip the '[' */
@@ -1113,6 +1125,8 @@ static void suffixedexp (LexState *ls, expdesc *v) {
   /* suffixedexp ->
        primaryexp { '.' NAME | '[' exp ']' | ':' NAME funcargs | funcargs } */
   FuncState *fs = ls->fs;
+  int jump = 0;
+  int pcs[20];
   primaryexp(ls, v);
   for (;;) {
     switch (ls->t.token) {
@@ -1140,7 +1154,37 @@ static void suffixedexp (LexState *ls, expdesc *v) {
         funcargs(ls, v);
         break;
       }
-      default: return;
+      case TK_SAFEINDEX: {
+        pcs[jump++] = fieldselsafe(ls, v);
+        break;
+      }
+      case TK_SAFESQ: {
+        expdesc key;
+        pcs[jump++] = luaK_goifnotnil(fs, v);
+        yindex(ls, &key);
+        luaK_indexed(fs, v, &key);
+        break;
+      }
+      case TK_SAFEDB: {
+        expdesc key;
+        luaX_next(ls);
+        codename(ls, &key);
+        pcs[jump++] = luaK_selfsafe(fs, v, &key);
+        funcargs(ls, v);
+        break;
+      }
+      default: {
+        if (jump) {
+          for (int i = 0; i < jump; ++i) {
+            int pc = pcs[i];
+            luaK_fixjump(fs, pc, v);
+          }
+          v->t = v->f = NO_JUMP;
+          if (v->k != VCALL)
+            luaK_exp2nextreg(fs, v);
+        }
+        return;
+      }
     }
   }
 }
