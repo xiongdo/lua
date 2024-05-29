@@ -38,3 +38,13 @@ target_compile_features(lua_binary PRIVATE cxx_std_17)
 target_link_libraries(lua_binary PUBLIC lua)
 
 set_property(TARGET lua_binary PROPERTY OUTPUT_NAME lua)
+
+############################################################
+# Create an executable
+############################################################
+
+add_executable(luac luac.c)
+
+target_compile_features(luac PRIVATE cxx_std_17)
+
+target_link_libraries(luac PUBLIC lua)
