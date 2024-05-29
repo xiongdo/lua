@@ -529,6 +529,15 @@ static int llex (LexState *ls, SemInfo *seminfo) {
         else if (!lisdigit(ls->current)) return '.';
         else return read_numeral(ls, seminfo);
       }
+      case '?': {
+        next(ls);
+        if (check_next1(ls, '.'))
+          return TK_SAFEINDEX;
+        if (check_next1(ls, '['))
+          return TK_SAFESQ;
+        if (check_next1(ls, ':'))
+          return TK_SAFEDB;
+      }
       case '0': case '1': case '2': case '3': case '4':
       case '5': case '6': case '7': case '8': case '9': {
         return read_numeral(ls, seminfo);
