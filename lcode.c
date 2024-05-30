@@ -755,25 +755,8 @@ static void const2exp (TValue *v, expdesc *e) {
 */
 void luaK_setreturns (FuncState *fs, expdesc *e, int nresults) {
   Instruction *pc = &getinstruction(fs, e);
-  if (e->k == VCALL) { /* expression is an open function call? */
+  if (e->k == VCALL) /* expression is an open function call? */
     SETARG_C(*pc, nresults + 1);
-    int i = e->u.info;
-    Instruction *pi = &fs->f->code[i-3];
-    int iA = GETARG_A(*pi);
-    int pA = GETARG_A(*pc);
-    if (GET_OPCODE(*pi) == OP_TESTSET && iA == pA) {
-      Proto* f = fs->f;
-      luaM_growvector(fs->ls->L, f->code, fs->pc, f->sizecode, Instruction,
-                MAX_INT, "opcodes");
-      for (int j = fs->pc; j > i-2; j--) {
-        f->code[j] = f->code[j-1];
-        f->lineinfo[j] = f->lineinfo[j-1];
-      }
-      f->code[i-2] = CREATE_ABCk(OP_LOADNIL, iA + 1, nresults - 2, 0, 0);
-    }
-    e->u.info++;
-    fs->pc++;
-  }
   else {
     lua_assert(e->k == VVARARG);
     SETARG_C(*pc, nresults + 1);
