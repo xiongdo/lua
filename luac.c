@@ -590,7 +590,7 @@ static void PrintCode(const Proto* f)
         printf("%d %d",a,isk);
         break;
    case OP_TESTSET:
-        printf("%d %d %d",a,b,isk);
+        printf("%d %d %d",a,b,c,isk);
         break;
    case OP_CALL:
         printf("%d %d %d",a,b,c);

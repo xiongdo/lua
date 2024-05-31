@@ -1649,11 +1649,13 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
       }
       vmcase(OP_TESTSET) {
         StkId ra = RA(i);
+        int c = GETARG_C(i);
         TValue *rb = vRB(i);
         if (l_isfalse(rb) == GETARG_k(i))
           pc++;
         else {
-          setobj2s(L, ra, rb);
+          for (int i = 0; i <= c; ++i)
+            setobj2s(L, ra + i, rb);
           donextjump(ci);
         }
         vmbreak;
