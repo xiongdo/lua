@@ -1182,7 +1182,10 @@ static void suffixedexp (LexState *ls, expdesc *v) {
           v->t = v->f = NO_JUMP;
           if (v->k != VCALL)
             luaK_exp2nextreg(fs, v);
+          else
+            v->jump = jump;
         }
+        else v->jump = 0;
         return;
       }
     }

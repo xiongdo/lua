@@ -757,12 +757,10 @@ void luaK_setreturns (FuncState *fs, expdesc *e, int nresults) {
   Instruction *pc = &getinstruction(fs, e);
   if (e->k == VCALL) { /* expression is an open function call? */
     SETARG_C(*pc, nresults + 1);
-    int p = e->u.info;
-    if (p >= 3) {
-      Instruction* i = &fs->f->code[p-3];
-      if (GET_OPCODE(*i) == OP_TESTSET) {
-        SETARG_C(*i, nresults - 1);
-      }
+    int j = e->jump;
+    while (j-- > 0) {
+      while (GET_OPCODE(*--pc) != OP_TESTSET) ;
+      SETARG_C(*pc, nresults - 1);
     }
   }
   else {
@@ -1204,7 +1202,7 @@ static int jumponcondnotfree(FuncState* fs, expdesc* e, int cond) {
   }
   discharge2anyreg(fs, e);
   //freeexp(fs, e);
-  return condjump(fs, OP_TESTSET, NO_REG, e->u.info, 0, cond);
+  return condjump(fs, OP_TESTSET, NO_REG, e->u.info, MAXARG_C, cond);
 }
 
 
