@@ -758,7 +758,7 @@ void luaK_setreturns (FuncState *fs, expdesc *e, int nresults) {
   if (e->k == VCALL) { /* expression is an open function call? */
     SETARG_C(*pc, nresults + 1);
     int j = e->jump;
-    while (j-- > 0) {
+    while (j-- > 0 && nresults > 0) {
       while (GET_OPCODE(*--pc) != OP_TESTSET) ;
       SETARG_C(*pc, nresults - 1);
     }
