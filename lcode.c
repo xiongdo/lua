@@ -760,7 +760,7 @@ void luaK_setreturns (FuncState *fs, expdesc *e, int nresults) {
     int j = e->jump;
     while (j-- > 0 && nresults > 0) {
       while (GET_OPCODE(*--pc) != OP_TESTSET) ;
-      SETARG_C(*pc, nresults - 1);
+        SETARG_C(*pc, nresults - 1);
     }
   }
   else {

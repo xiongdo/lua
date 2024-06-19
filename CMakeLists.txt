@@ -27,6 +27,8 @@ add_library(lua STATIC
 
 target_compile_features(lua PRIVATE cxx_std_17)
 
+set_property(TARGET lua PROPERTY OUTPUT_NAME lualib)
+
 ############################################################
 # Create an executable
 ############################################################

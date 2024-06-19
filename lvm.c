@@ -79,6 +79,11 @@
 
 #endif
 
+#define checksafetest(op1,op2,ra,rra,rc) ((op1==OP_RETURN) && \
+  (op2==OP_TAILCALL) && \
+  (ra==rra) && \
+  (rc==MAXARG_C))
+
 
 /*
 ** Try to convert a value from string to a number value.
@@ -1659,6 +1664,12 @@ void luaV_execute (lua_State *L, CallInfo *ci) {
             for (int i = 1; i <= c; ++i)
               setobj2s(L, ra + i, rb);
           donextjump(ci);
+          OpCode op = GET_OPCODE(*pc);
+          OpCode pop = GET_OPCODE(*(pc - 1));
+          StkId rra = RA(*pc);
+          if (checksafetest(op,pop,ra,rra,c)) {
+            L->top.p = ra + 1;
+          }
         }
         vmbreak;
       }
